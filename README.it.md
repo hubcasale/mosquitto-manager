@@ -79,39 +79,45 @@ Apri `http://<server>:8088`.
 
 L'immagine non è ancora pubblicata? Costruiscila da una copia del repo: `docker build -t mosquitto-manager .` e usa quel nome.
 
-## Hai già utenti in un `password_file`?
+## Hai già `password_file` e `acl_file`?
 
-Con Mosquitto **2.1+** puoi passare a Dynamic Security **senza toccare nessun dispositivo**: gli hash delle password
-vengono importati così come sono. Verificato su 2.1.2.
+Con Mosquitto **2.1+** puoi passare a Dynamic Security **senza toccare nessun dispositivo**: le password si
+importano così come sono e l'`acl_file` diventa un ruolo per utente. Verificato su 2.1.2: con una copia di una
+configurazione reale (12 utenti, listener anonimo locale) ho confrontato il broker con `acl_file` e quello
+convertito su 548 prove (login, accesso anonimo, e per ogni utente quali topic può leggere e scrivere):
+**548 identiche**.
 
 Da sapere prima:
 
 1. **Con il plugin caricato, un utente deve esistere in Dynamic Security per avere accesso**, anche se il login
-   passerebbe dal `password_file` (provato: l'utente si autentica ma le sottoscrizioni vengono rifiutate).
-   Quindi è un'*importazione*, non una convivenza.
-2. L'importazione non assegna **nessun ruolo** e imposta l'**accesso predefinito su "consenti"**: è la stessa
-   situazione di un broker senza `acl_file`, dove tutti possono tutto. Poi stringi con calma dall'interfaccia.
-3. Le regole di un eventuale `acl_file` **non** vengono importate: tieni "consenti" finché non le hai ricreate
-   come ruoli, altrimenti i dispositivi perdono accessi che hanno oggi.
+   passerebbe dal `password_file`. Quindi è un'*importazione*, non una convivenza.
+2. Cosa viene convertito: `user X` diventa un ruolo `X` assegnato all'utente `X`; `topic read/write/readwrite`
+   diventano le regole corrispondenti; le regole prima del primo `user` (client anonimi) diventano il gruppo
+   `anonymous`, così un listener locale anonimo continua a funzionare. **Non** vengono convertite le regole
+   `pattern` (con `%u` / `%c`): lo strumento le elenca e vanno rifatte a mano.
+3. **Sottoscrizioni come prima**: con `acl_file` il broker accetta qualunque sottoscrizione e filtra alla
+   consegna; Dynamic Security di norma rifiuta la sottoscrizione. Per non rompere i client che si sottoscrivono
+   in modo più ampio di quanto possono leggere, lo strumento attiva "consenti di sottoscrivere" nell'accesso
+   predefinito. Quando tutto funziona lo spegni da *Ruoli → Accesso predefinito* (oppure usa `--strict-subscribe`).
 4. Serve **un riavvio** del broker (pochi secondi); i dispositivi si ricollegano da soli.
 
 Passi:
 
 ```bash
-# 0. fai una copia della cartella di configurazione del broker
+# 0. fai una copia delle cartelle config e data del broker
 
-# 1. genera la configurazione dal tuo password_file
-python3 tools/passwd_to_dynsec.py --passwd /percorso/passwd \
-  --out /percorso/dynamic-security.json --admin mm-admin
+# 1. genera la configurazione (il JSON va nella cartella data del broker)
+python3 tools/passwd_to_dynsec.py --passwd /percorso/mosquitto.passwd --acl /percorso/acl.conf \
+  --out /percorso/data/dynamic-security.json --admin mm-admin
 ```
 
-Lo strumento stampa quanti utenti ha importato e la password generata per `mm-admin` (mostrata una sola volta:
-va in `MQTT_PASSWORD`). Le voci che non sono hash `$7$` (testo in chiaro o vecchi `$6$`) vengono elencate come
-*non importate*: ricreale dall'interfaccia.
+Lo strumento stampa cosa ha importato, gli avvisi e la password generata per `mm-admin` (mostrata una sola volta:
+va in `MQTT_PASSWORD`). Le voci che non sono hash `$7$` vengono elencate come *non importate*: ricreale dall'interfaccia.
 
-Poi in `mosquitto.conf` aggiungi il plugin e il registro (vedi sopra), togli `password_file`, riavvia, e avvia il manager.
+Poi in `mosquitto.conf` aggiungi il plugin e il registro (vedi sopra), togli `password_file` e `acl_file`
+(le impostazioni per listener come `listener_allow_anonymous` restano), riavvia, e avvia il manager.
 Guida completa in inglese: [docs/MIGRATION.md](docs/MIGRATION.md). Per tornare indietro basta rimettere il vecchio
-`mosquitto.conf`: il file delle password non viene mai modificato.
+`mosquitto.conf`: né il file delle password né l'ACL vengono modificati.
 
 ## Configurazione
 
@@ -146,7 +152,8 @@ Questo strumento può cambiare chi si collega al tuo broker: trattalo come un pa
   quindi esistono solo per le connessioni aperte *dopo* l'avvio del manager. Con 2.1+ l'indirizzo delle connessioni
   precedenti si vede comunque; con 2.0.x non sono elencate finché il dispositivo non si ricollega.
 - **Storico limitato**: gli ultimi ~1000 eventi, in memoria e in un piccolo file in `/data`.
-- **Niente import di `acl_file`**: Dynamic Security lo sostituisce; riscrivi le regole come ruoli.
+- **`acl_file` convertito, con un'eccezione**: lo strumento di migrazione trasforma l'ACL in ruoli, ma le regole
+  `pattern` (`%u` / `%c`) non sono esprimibili in Dynamic Security e vanno rifatte a mano.
 - **Un broker per manager**.
 
 ## Licenza

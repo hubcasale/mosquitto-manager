@@ -75,8 +75,8 @@ python3 tools/passwd_to_dynsec.py --out ./dynamic-security.json --admin mm-admin
 ```
 
 Put the file where `plugin_opt_config_file` points and restart the broker. **Already have users in a
-`password_file`?** Use `--passwd` to carry them over with their current passwords:
-see [docs/MIGRATION.md](docs/MIGRATION.md).
+`password_file` (and rules in an `acl_file`)?** Use `--passwd` and `--acl` to carry them over with their
+current passwords and permissions, so no device needs changing: see [docs/MIGRATION.md](docs/MIGRATION.md).
 
 **3. Run the manager** ([compose example](docker-compose.example.yml)):
 
@@ -132,7 +132,8 @@ This tool can change who may connect to your broker, so treat it like an admin p
   the address of earlier connections is still shown. On 2.0.x connections opened before the manager
   started are not listed until the device reconnects.
 - **History is small.** The last ~1000 events are kept in memory and a small file in `/data`.
-- **No `acl_file` import.** Dynamic Security replaces `acl_file`; translate existing rules into roles.
+- **`acl_file` is converted, with one gap.** The migration tool turns ACL files into roles, but `pattern`
+  rules (`%u` / `%c`) cannot be expressed in Dynamic Security and must be re-created by hand.
 - **One broker per manager.** Run several instances for several brokers.
 
 ## Development
