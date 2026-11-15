@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from . import __version__, models
 from .auth import (COOKIE_NAME, CSRF_HEADER, CSRF_VALUE, LoginThrottle, check_password,
                    make_token, verify_token)
+from .certcheck import CertMonitor
 from .broker import Broker, BrokerUnavailable, DynsecError, DynsecTimeout
 from .config import Settings
 from .ha import HaPublisher
@@ -47,7 +48,8 @@ def create_app(settings: Settings, broker: Broker | None = None,
     broker = broker or Broker(settings, tracker)
     throttle = LoginThrottle()
     state_file = settings.data_dir / "state.json"
-    ha = HaPublisher(settings, broker, tracker)
+    certs = CertMonitor(settings)
+    ha = HaPublisher(settings, broker, tracker, certs=certs)
     host_names = HostNames(settings.data_dir / "hosts.json")
 
     @asynccontextmanager
@@ -55,6 +57,7 @@ def create_app(settings: Settings, broker: Broker | None = None,
         load_state(tracker, state_file)
         broker.start(asyncio.get_running_loop())
         ha.start(asyncio.get_running_loop())
+        cert_task = asyncio.create_task(certs.run()) if certs.enabled else None
 
         async def background() -> None:
             ticks = 0
@@ -75,6 +78,8 @@ def create_app(settings: Settings, broker: Broker | None = None,
         finally:
             task.cancel()
             await ha.stop()
+            if cert_task:
+                cert_task.cancel()
             broker.stop()
             try:
                 settings.data_dir.mkdir(parents=True, exist_ok=True)
@@ -179,6 +184,7 @@ def create_app(settings: Settings, broker: Broker | None = None,
                        "connections_supported": broker.supports_connections},
             "log_feed": broker.log_feed_seen,
             "ha": ha.info(),
+            "certificates": certs.snapshot(),
             "encryption": tracker.encryption_summary(settings.tls_ports,
                                                      broker.snapshot().get("clients_connected")),
             "failed_logins_24h": tracker.count_events("auth_failed", now - 86400),
@@ -193,6 +199,11 @@ def create_app(settings: Settings, broker: Broker | None = None,
         kinds = {k for k in (kind or "").split(",") if k} or None
         return {"events": tracker.events(limit, kinds, internal, since_id),
                 "log_feed": broker.log_feed_seen}
+
+    @api.post("/certificates/check")
+    async def certificates_check():
+        await certs.check_now()
+        return {"certificates": certs.snapshot()}
 
     # --------------------------------------------------------------------- map
     @api.get("/map")

@@ -1,6 +1,7 @@
 import { h, clear } from '../dom.js';
 import { t } from '../i18n.js';
-import { fmtTime, uptime, num } from '../fmt.js';
+import { api } from '../api.js';
+import { fmtTime, fmtDate, ago, uptime, num } from '../fmt.js';
 import { lineChart } from '../chart.js';
 import { eventLine } from './activity.js';
 
@@ -11,8 +12,46 @@ function stat(label, value, sub, tone) {
     sub ? h('div', { class: 'stat-sub' }, sub) : null);
 }
 
+// A warning for any certificate that is close to expiry (or already expired).
+function certNotices(certs) {
+  return (certs || []).filter((c) => c.level && c.level !== 'ok' && c.level !== 'error').map((c) => {
+    const where = `${c.host}:${c.port}`;
+    const msg = c.level === 'expired'
+      ? t('cert.expired.msg', { host: where })
+      : t('cert.warn.msg', { n: Math.max(0, Math.floor(c.days_left)), host: where });
+    return h('div', { class: `notice ${c.level === 'warning' ? 'warn' : 'error'}` },
+      h('strong', {}, t('cert.title')), ' ', msg, ' ', t('cert.warn.hint'));
+  });
+}
+
+function certCards(certs, ctx) {
+  return (certs || []).map((c) => {
+    if (c.error) {
+      return h('div', { class: 'notice warn' }, h('strong', {}, t('cert.title')), ' ', c.error);
+    }
+    const days = Math.floor(c.days_left);
+    const tone = { ok: 'ok', warning: 'warn', critical: 'bad', expired: 'bad' }[c.level] || 'muted';
+    const button = h('button', { class: 'btn small', type: 'button', onclick: async (e) => {
+      e.target.disabled = true;
+      try { await api('/certificates/check', {}); await ctx.refresh(); } finally { e.target.disabled = false; }
+    } }, t('cert.check'));
+    return h('div', { class: 'card' },
+      h('div', { class: 'card-head' }, h('h3', {}, t('cert.card.title', { host: `${c.host}:${c.port}` })), button),
+      h('p', {}, h('span', { class: `badge ${tone}` },
+        c.level === 'expired' ? t('cert.expired', { d: fmtDate(c.not_after) })
+          : t('cert.expires', { d: fmtDate(c.not_after), n: days }))),
+      h('p', { class: 'small' }, c.names.length ? t('cert.names', { v: c.names.join(', ') }) : c.subject,
+        ' · ', t('cert.issuer', { v: c.issuer }), ' · ', t('cert.key', { v: c.key })),
+      h('p', { class: 'small' },
+        c.trust_error
+          ? h('span', { class: 'badge warn' }, t('cert.untrusted', { e: c.trust_error }))
+          : h('span', { class: 'badge ok' }, t('cert.trusted')),
+        ' ', h('span', { class: 'muted' }, t('cert.checked', { v: ago(c.checked) }))));
+  });
+}
+
 function alerts(s) {
-  const out = [];
+  const out = certNotices(s.certificates);
   if (!s.broker.connected) {
     out.push(h('div', { class: 'notice error' },
       h('strong', {}, t('dash.offline')), ' ',
@@ -91,6 +130,7 @@ export function renderDashboard(root, ctx) {
           lineChart(times, [
             { label: t('dash.in'), cls: 's0', values: hist.map((p) => p.in) },
             { label: t('dash.out'), cls: 's1', values: hist.map((p) => p.out) }]))),
+      ...certCards(s.certificates, ctx),
       haCard(s.ha),
       h('div', { class: 'card' },
         h('div', { class: 'card-head' },

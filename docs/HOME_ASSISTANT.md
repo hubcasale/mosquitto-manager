@@ -24,6 +24,8 @@ the entities appear by themselves under two devices.
 | `sensor.mosquitto_failed_logins_24h` / `_10m` | refused logins |
 | `sensor.mosquitto_last_failed_login` | when; attributes: `clientid`, `address`, `reason` |
 | `binary_sensor.mosquitto_login_attack` | on when failed logins in 10 minutes reach `HA_FAILED_THRESHOLD` (5) |
+| `sensor.mosquitto_cert_days_left` / `_expires` | days left and expiry time of the broker's TLS certificate (see [TLS.md](TLS.md#7-get-warned-before-it-expires)) |
+| `binary_sensor.mosquitto_cert_expiring` | on when fewer than `CERT_WARN_DAYS` (14) days are left |
 | `sensor.mosquitto_uptime`, `_version`, `_dropped` | diagnostics |
 
 **Device "MQTT clients"**: one connectivity sensor per user, `binary_sensor.mqtt_client_<user>`

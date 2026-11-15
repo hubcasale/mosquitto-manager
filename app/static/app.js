@@ -27,6 +27,7 @@ const ctx = {
   listeners: new Set(),
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); },
   emit() { this.listeners.forEach((fn) => fn(this.status)); },
+  refresh() { return refreshStatus(); },
 };
 
 let session = { auth_required: true, version: '' };

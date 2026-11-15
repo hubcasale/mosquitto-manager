@@ -266,6 +266,22 @@ const S = {
   'map.host.ph': ['e.g. Home server', 'es. Server di casa'],
   'map.host.clear': ['Remove name', 'Rimuovi il nome'],
 
+  // ---- certificate
+  'cert.title': ['TLS certificate', 'Certificato TLS'],
+  'cert.card.title': ['Broker TLS certificate — {host}', 'Certificato TLS del broker — {host}'],
+  'cert.expires': ['Expires {d} ({n} days left)', 'Scade il {d} (tra {n} giorni)'],
+  'cert.expired': ['Expired on {d}', 'Scaduto il {d}'],
+  'cert.names': ['Valid for {v}', 'Valido per {v}'],
+  'cert.issuer': ['issued by {v}', 'emesso da {v}'],
+  'cert.key': ['key {v}', 'chiave {v}'],
+  'cert.trusted': ['Trusted by the manager', 'Considerato attendibile dal manager'],
+  'cert.untrusted': ['Not trusted by the manager: {e}', 'Non attendibile per il manager: {e}'],
+  'cert.checked': ['checked {v}', 'controllato {v}'],
+  'cert.check': ['Check now', 'Controlla ora'],
+  'cert.warn.msg': ['The broker\'s certificate expires in {n} days ({host}).', 'Il certificato del broker scade tra {n} giorni ({host}).'],
+  'cert.expired.msg': ['The broker\'s certificate has EXPIRED ({host}): TLS clients will refuse it.', 'Il certificato del broker è SCADUTO ({host}): i client TLS lo rifiutano.'],
+  'cert.warn.hint': ['Check the renewal (Nginx Proxy Manager / certbot) and the deploy script.', 'Controlla il rinnovo (Nginx Proxy Manager / certbot) e lo script di deploy.'],
+
   // ---- Home Assistant
   'ha.title': ['Home Assistant sensors', 'Sensori per Home Assistant'],
   'ha.off': ['Not publishing. The manager can create sensors in Home Assistant: broker status, clients, failed logins and one connectivity sensor per user.',

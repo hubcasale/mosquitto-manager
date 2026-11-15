@@ -339,3 +339,12 @@ def test_status_reports_encryption_counts(env):
     tracker.ingest_log("N", f"{int(NOW)}: New client connected from 1.1.1.1:5 as c (p4, c1, k60, u'u').", now=NOW)
     enc = client.get("/api/status").json()["encryption"]
     assert enc["tls"] == 1 and enc["plain"] == 0
+
+
+def test_status_and_manual_check_include_certificates(env):
+    client, *_ = env
+    login(client)
+    assert client.get("/api/status").json()["certificates"] == []  # fake settings: nothing to watch
+    r = client.post("/api/certificates/check", json={}, headers=CSRF)
+    assert r.status_code == 200 and r.json() == {"certificates": []}
+    assert client.post("/api/certificates/check", json={}).status_code == 403  # needs the CSRF header

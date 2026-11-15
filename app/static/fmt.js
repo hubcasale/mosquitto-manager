@@ -5,6 +5,11 @@ export function fmtTime(ts) {
   return new Date(ts * 1000).toLocaleString(lang(), { dateStyle: 'short', timeStyle: 'medium' });
 }
 
+export function fmtDate(ts) {
+  if (!ts) return '—';
+  return new Date(ts * 1000).toLocaleDateString(lang(), { dateStyle: 'medium' });
+}
+
 export function ago(ts) {
   if (!ts) return '—';
   const diff = Math.round(Date.now() / 1000 - ts);

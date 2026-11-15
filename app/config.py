@@ -70,6 +70,8 @@ class Settings:
     ha_failed_threshold: int
     ha_user_sensors: bool
     tls_ports: frozenset
+    cert_check: str
+    cert_warn_days: int
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> "Settings":
@@ -116,6 +118,17 @@ class Settings:
         except ValueError as exc:
             raise ConfigError("TLS_PORTS must be a list of port numbers, for example 8883.") from exc
 
+        cert_check = e.get("CERT_CHECK", "auto").strip() or "auto"
+        if cert_check.lower() not in ("auto", "off"):
+            for item in cert_check.replace(";", ",").split(","):
+                host, sep, port = item.strip().rpartition(":")
+                if item.strip() and (not sep or not host or not port.isdigit()):
+                    raise ConfigError("CERT_CHECK must be 'auto', 'off' or a list of host:port.")
+        try:
+            cert_warn_days = int(e.get("CERT_WARN_DAYS", "14"))
+        except ValueError as exc:
+            raise ConfigError("CERT_WARN_DAYS must be a number of days.") from exc
+
         data_dir = Path(e.get("DATA_DIR", "/data"))
         return cls(
             mqtt_host=host,
@@ -140,4 +153,6 @@ class Settings:
             ha_failed_threshold=max(1, ha_threshold),
             ha_user_sensors=_bool(e.get("HA_USER_SENSORS"), True),
             tls_ports=tls_ports,
+            cert_check=cert_check,
+            cert_warn_days=max(1, cert_warn_days),
         )

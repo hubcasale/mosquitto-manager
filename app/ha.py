@@ -60,6 +60,11 @@ BROKER_ENTITIES: list[tuple[str, str, str, dict[str, Any]]] = [
     ("uptime", "sensor", "Uptime",
      {"device_class": "duration", "unit_of_measurement": "s", "entity_category": "diagnostic"}),
     ("version", "sensor", "Version", {"entity_category": "diagnostic", "icon": "mdi:tag"}),
+    ("cert_days_left", "sensor", "TLS certificate days left",
+     {"state_class": "measurement", "unit_of_measurement": "d", "icon": "mdi:certificate"}),
+    ("cert_expires", "sensor", "TLS certificate expires",
+     {"device_class": "timestamp", "icon": "mdi:calendar-alert"}),
+    ("cert_expiring", "binary_sensor", "TLS certificate expiring", {"device_class": "problem"}),
     ("dropped", "sensor", "Dropped messages",
      {"state_class": "total_increasing", "entity_category": "diagnostic", "icon": "mdi:message-off"}),
 ]
@@ -163,8 +168,12 @@ def user_config(s: Settings, t: Topics, username: str) -> tuple[str, str, dict[s
 
 def broker_states(snap: dict[str, Any], *, users_total: int | None, users_online: int | None,
                   failed_24h: int, failed_10m: int, threshold: int,
-                  last_failed: dict[str, Any] | None) -> dict[str, str]:
+                  last_failed: dict[str, Any] | None,
+                  cert: dict[str, Any] | None = None) -> dict[str, str]:
     out = {
+        "cert_days_left": _fmt(int(cert["days_left"] // 1) if cert else None),
+        "cert_expires": iso(cert["not_after"]) if cert else "None",
+        "cert_expiring": "ON" if cert and cert["level"] != "ok" else "OFF",
         "clients_connected": _fmt(snap.get("clients_connected")),
         "users_online": _fmt(users_online),
         "users_total": _fmt(users_total),
@@ -206,11 +215,12 @@ def user_payloads(c: dict[str, Any]) -> tuple[str, str]:
 
 # --------------------------------------------------------------------- publisher
 class HaPublisher:
-    def __init__(self, settings: Settings, broker: Any, tracker: Tracker,
+    def __init__(self, settings: Settings, broker: Any, tracker: Tracker, certs: Any = None,
                  publish: Callable[[str, str, bool], None] | None = None):
         self.s = settings
         self.broker = broker
         self.tracker = tracker
+        self.certs = certs
         self.topics = Topics(settings)
         self.state = "off" if not settings.ha_discovery else "starting"
         self.error: str | None = None
@@ -409,7 +419,8 @@ class HaPublisher:
             failed_24h=self.tracker.count_events("auth_failed", now - 86400),
             failed_10m=self.tracker.count_events("auth_failed", now - 600),
             threshold=self.s.ha_failed_threshold,
-            last_failed=self.tracker.last_event("auth_failed"))
+            last_failed=self.tracker.last_event("auth_failed"),
+            cert=self.certs.primary() if self.certs is not None else None)
         for key, payload in states.items():
             self._send(self.topics.state(key), payload)
 

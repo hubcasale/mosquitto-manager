@@ -19,6 +19,7 @@ manage users, passwords, roles and ACLs, see who is connected, and find out why 
   hand-writing four Dynamic Security rules; allow/deny; default access.
 - **Who is connected**: live connections per user, with address, client id, protocol and keepalive.
 - **Encrypted or not**: each connection is marked TLS or plain (users page, map, dashboard counter), to see who is still on port 1883 while you move clients to TLS. See [docs/TLS.md](docs/TLS.md).
+- **Certificate watch**: shows when the broker's TLS certificate expires, warns well before, and can raise a Home Assistant alert. See [docs/TLS.md](docs/TLS.md).
 - **Failed logins**: which client id and which address keep being refused, and how often.
 - **Test a login**: open a short connection with a username/password, exactly like a device, and see the
   broker's answer in plain words.
@@ -117,6 +118,8 @@ No published image yet? Build it from a checkout: `docker build -t mosquitto-man
 | `PORT` | `8080` | Port inside the container |
 | `DATA_DIR` | `/data` | Session key and a small activity cache |
 | `LOG_LEVEL` | `info` | |
+| `CERT_WARN_DAYS` | `14` | Warn when the broker's TLS certificate has fewer days left |
+| `CERT_CHECK` | `auto` | Where to read the certificate: `auto`, `off`, or `host:port[,host:port]` |
 | `TLS_PORTS` | `8883` | Broker ports that are TLS listeners (used to mark connections encrypted) |
 | `HA_DISCOVERY` | `false` | Publish sensors to Home Assistant ([details](docs/HOME_ASSISTANT.md)) |
 | `HA_USER_SENSORS` | `true` | One connectivity sensor per user |

@@ -19,6 +19,7 @@ Una piccola interfaccia web, da installare in casa, per gestire un broker [Eclip
   le quattro regole di Dynamic Security; consenti/nega; accesso predefinito.
 - **Chi è collegato**: connessioni attive per utente, con indirizzo, client id, protocollo e keepalive.
 - **Cifrata o no**: ogni connessione è marcata TLS o in chiaro (pagina utenti, mappa, contatore in dashboard), per vedere chi usa ancora la 1883 mentre passi i client alla TLS. Vedi [docs/TLS.md](docs/TLS.md) (in inglese).
+- **Controllo del certificato**: mostra quando scade il certificato TLS del broker, avvisa con largo anticipo e può far scattare un allarme in Home Assistant. Vedi [docs/TLS.md](docs/TLS.md) (in inglese).
 - **Login falliti**: quale client id e quale indirizzo vengono rifiutati, e quante volte.
 - **Prova il login**: apre una breve connessione con nome utente e password, come un dispositivo, e mostra la
   risposta del broker in parole semplici.
@@ -139,6 +140,8 @@ Guida completa in inglese: [docs/MIGRATION.md](docs/MIGRATION.md). Per tornare i
 | `COOKIE_SECURE` | `false` | Metti `true` se servita in HTTPS |
 | `SESSION_HOURS` | `12` | Validità del login |
 | `PORT` | `8080` | Porta dentro il container |
+| `CERT_WARN_DAYS` | `14` | Avvisa quando al certificato TLS del broker restano meno giorni |
+| `CERT_CHECK` | `auto` | Dove leggere il certificato: `auto`, `off` o `host:porta[,host:porta]` |
 | `TLS_PORTS` | `8883` | Porte del broker che sono listener TLS (per marcare le connessioni cifrate) |
 | `HA_DISCOVERY` | `false` | Pubblica i sensori in Home Assistant |
 | `HA_USER_SENSORS` | `true` | Un sensore di connessione per ogni utente |

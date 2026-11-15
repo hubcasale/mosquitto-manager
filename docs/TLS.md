@@ -100,3 +100,37 @@ mosquitto_sub -h mqtt.example.com -p 8883 -u USER -P PASSWORD -t '$SYS/broker/ve
 
 When no client connects on 1883 any more, remove the `1883:1883` mapping (or publish it on `127.0.0.1` only).
 A listener bound to the loopback, such as a local health-check listener, is unaffected.
+
+## 7. Get warned before it expires
+
+The most common way a TLS setup breaks months later is a certificate that silently stops renewing: the
+Cloudflare token behind a DNS challenge is revoked, the certificate is re-created under a new folder name and
+the deploy job still points to the old one, and so on. Nothing complains until the day every client refuses the
+broker. Mosquitto Manager therefore reads the certificate the broker presents and shows it on the
+*Dashboard* (expiry date, days left, issuer, key type, and whether the manager itself trusts it), with a
+warning when fewer than `CERT_WARN_DAYS` (default 14) remain, and an error when fewer than 7 remain or it has
+expired. *Check now* re-reads it immediately; it is re-read every 6 hours.
+
+It looks at the port the manager connects to when `MQTT_TLS=true`, otherwise at the broker's TLS ports
+(`TLS_PORTS`, default `8883`) and stays quiet if there are none. Set `CERT_CHECK=host:port[,host:port]` to look
+elsewhere, or `CERT_CHECK=off`.
+
+With `HA_DISCOVERY=true` three sensors follow it: `sensor.mosquitto_cert_days_left`,
+`sensor.mosquitto_cert_expires` and `binary_sensor.mosquitto_cert_expiring`, for example:
+
+```yaml
+automation:
+  - alias: "MQTT - certificato TLS in scadenza"
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.mosquitto_cert_expiring
+        to: "on"
+    actions:
+      - action: notify.notify
+        data:
+          title: "Mosquitto"
+          message: >
+            Il certificato TLS del broker scade tra
+            {{ states('sensor.mosquitto_cert_days_left') }} giorni: controlla il rinnovo.
+```
+
