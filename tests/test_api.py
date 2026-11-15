@@ -302,3 +302,14 @@ def test_status_reports_home_assistant_off_by_default(env):
     login(client)
     ha = client.get("/api/status").json()["ha"]
     assert ha["enabled"] is False and ha["state"] == "off" and ha["entities"] == 0
+
+
+def test_connections_without_address_are_saved_sessions_not_live():
+    t = Tracker()
+    mixed = merge_clients([{"username": "u", "roles": [], "groups": [],
+                            "connections": [{}, {}, {"address": "1.1.1.1"}]}], t, "mgr")[0]
+    assert mixed["online"] and len(mixed["connections"]) == 1 and mixed["saved_sessions"] == 2
+    idle = merge_clients([{"username": "u", "roles": [], "groups": [], "connections": [{}, {}]}], t, "mgr")[0]
+    assert idle["online"] is False and idle["connections"] == [] and idle["saved_sessions"] == 2
+    log_based = merge_clients([{"username": "u", "roles": [], "groups": []}], t, "mgr")[0]
+    assert log_based["saved_sessions"] == 0

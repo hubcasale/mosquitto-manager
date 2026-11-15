@@ -140,6 +140,11 @@ This tool can change who may connect to your broker, so treat it like an admin p
   broker log, so they only exist for connections opened *after* the manager started. On Mosquitto 2.1+
   the address of earlier connections is still shown. On 2.0.x connections opened before the manager
   started are not listed until the device reconnects.
+- **Saved sessions.** Mosquitto lists devices with a persistent session (clean session off) as connections
+  even after they disconnect. After a broker restart they come back from disk with no address: the manager
+  shows those as "saved sessions", not as online. Within one broker run, a persistent client that disconnects
+  can still look connected until the broker restarts or its session expires; setting
+  `persistent_client_expiration` (for example `1d`) in `mosquitto.conf` makes them expire.
 - **History is small.** The last ~1000 events are kept in memory and a small file in `/data`.
 - **`acl_file` is converted, with one gap.** The migration tool turns ACL files into roles, but `pattern`
   rules (`%u` / `%c`) cannot be expressed in Dynamic Security and must be re-created by hand.

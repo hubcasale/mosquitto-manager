@@ -34,11 +34,17 @@ def merge_clients(raw_clients: list[dict], tracker: Tracker, manager_user: str) 
     for raw in raw_clients:
         c = normalize_client(raw)
         sessions = tracker.sessions_for(c["username"])
+        saved = 0
         if "connections" in raw:
             remaining = list(sessions)
             conns = []
             for entry in raw["connections"]:
                 addr = entry.get("address")
+                if not addr:
+                    # Mosquitto also lists persistent sessions of clients that are not connected;
+                    # after a broker restart they come back from disk with no address at all.
+                    saved += 1
+                    continue
                 match = next((s for s in remaining if s.address == addr), None)
                 if match:
                     remaining.remove(match)
@@ -48,6 +54,7 @@ def merge_clients(raw_clients: list[dict], tracker: Tracker, manager_user: str) 
         else:
             conns = [session_dict(s) for s in sessions]
         c["connections"] = conns
+        c["saved_sessions"] = saved
         c["online"] = bool(conns)
         c["last_seen"] = tracker.last_seen.get(c["username"])
         c["is_manager"] = c["username"] == manager_user

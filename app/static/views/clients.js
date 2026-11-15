@@ -81,7 +81,10 @@ export function renderClients(root, _ctx, query = {}) {
       return h('span', { class: 'badge ok' }, h('i', { class: 'dot' }),
         t('clients.online', { n: c.connections.length }));
     }
-    return h('span', { class: 'badge muted' }, t('clients.offline'));
+    return h('span', {},
+      h('span', { class: 'badge muted' }, t('clients.offline')),
+      c.saved_sessions ? h('div', { class: 'muted small', title: t('clients.saved.hint') },
+        t('clients.saved', { n: c.saved_sessions })) : null);
   }
 
   function seenCell(c) {
@@ -238,7 +241,8 @@ export function renderClients(root, _ctx, query = {}) {
                 h('td', {}, h('code', {}, x.address || '?')), h('td', {}, x.clientid || '—'),
                 h('td', {}, x.protocol ? `${x.protocol} · ${x.keepalive}s` : '—'),
                 h('td', {}, x.since ? ago(x.since) : '—')))))
-            : h('p', { class: 'muted' }, t('clients.noconn'))),
+            : h('p', { class: 'muted' }, t('clients.noconn'),
+              c.saved_sessions ? ` ${t('clients.saved', { n: c.saved_sessions })}. ${t('clients.saved.hint')}` : '')),
 
         h('section', {}, h('h3', {}, t('nav.roles')),
           chips(c.roles, (r) => r.rolename, (r) => act(

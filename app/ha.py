@@ -193,6 +193,7 @@ def user_payloads(c: dict[str, Any]) -> tuple[str, str]:
         "username": c["username"], "display_name": c.get("textname") or None,
         "disabled": bool(c.get("disabled")),
         "connection_count": len(conns),
+        "saved_sessions": c.get("saved_sessions", 0),
         "address": first.get("address"), "clientid": first.get("clientid"),
         "protocol": first.get("protocol"), "connected_since": iso(first.get("since")),
         "connections": [{"address": x.get("address"), "clientid": x.get("clientid")} for x in conns],

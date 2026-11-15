@@ -158,6 +158,11 @@ Questo strumento può cambiare chi si collega al tuo broker: trattalo come un pa
 - **Dettagli delle connessioni**: client id, protocollo, keepalive e "da quando" arrivano dal registro del broker,
   quindi esistono solo per le connessioni aperte *dopo* l'avvio del manager. Con 2.1+ l'indirizzo delle connessioni
   precedenti si vede comunque; con 2.0.x non sono elencate finché il dispositivo non si ricollega.
+- **Sessioni salvate**: Mosquitto elenca come connessioni anche i dispositivi con sessione persistente (clean session
+  disattivato) dopo che si sono scollegati. Dopo un riavvio del broker tornano da disco senza indirizzo: il manager le
+  mostra come "sessioni salvate", non come online. Durante una stessa esecuzione del broker, un client persistente
+  scollegato può sembrare ancora collegato finché il broker non riparte o la sessione non scade; con
+  `persistent_client_expiration` (per esempio `1d`) in `mosquitto.conf` le sessioni scadono.
 - **Storico limitato**: gli ultimi ~1000 eventi, in memoria e in un piccolo file in `/data`.
 - **`acl_file` convertito, con un'eccezione**: lo strumento di migrazione trasforma l'ACL in ruoli, ma le regole
   `pattern` (`%u` / `%c`) non sono esprimibili in Dynamic Security e vanno rifatte a mano.

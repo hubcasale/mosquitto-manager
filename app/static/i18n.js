@@ -148,6 +148,10 @@ const S = {
   'clients.sec.danger': ['Danger zone', 'Zona pericolosa'],
   'clients.test.hint': ['Opens a short connection with this user and the password you type, like a device would.',
     'Apre una breve connessione con questo utente e la password digitata, come farebbe un dispositivo.'],
+  'clients.saved': ['{n} saved session(s)', '{n} sessioni salvate'],
+  'clients.saved.hint': [
+    'Saved sessions belong to devices that are not connected now. The broker keeps them until they expire.',
+    'Le sessioni salvate appartengono a dispositivi che ora non sono collegati. Il broker le conserva finché non scadono.'],
   'clients.noconn': ['Not connected right now.', 'Non collegato in questo momento.'],
   'clients.proto': ['Protocol · keepalive', 'Protocollo · keepalive'],
   'clients.since': ['Since', 'Da'],
