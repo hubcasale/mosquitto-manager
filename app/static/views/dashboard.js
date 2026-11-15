@@ -39,6 +39,21 @@ function alerts(s) {
   return out;
 }
 
+function haCard(ha) {
+  if (!ha || !ha.enabled) {
+    return h('div', { class: 'card' }, h('h3', {}, t('ha.title')),
+      h('p', { class: 'muted' }, t('ha.off')), h('p', { class: 'muted small' }, t('ha.off.hint'), h('code', {}, ' HA_DISCOVERY=true')));
+  }
+  if (ha.state === 'ok') {
+    return h('div', { class: 'card' }, h('h3', {}, t('ha.title')),
+      h('p', {}, h('span', { class: 'badge ok' }, h('i', { class: 'dot' }), t('ha.ok')), ' ',
+        t('ha.ok.detail', { n: ha.entities, p: ha.prefix })));
+  }
+  return h('div', { class: `notice ${ha.state === 'error' ? 'error' : 'info'}` },
+    h('strong', {}, t('ha.title')), ' ',
+    ha.state === 'error' ? t('ha.error', { e: ha.error || '' }) : t('ha.starting'));
+}
+
 export function renderDashboard(root, ctx) {
   const view = h('div', { class: 'view' });
   root.append(view);
@@ -74,6 +89,7 @@ export function renderDashboard(root, ctx) {
           lineChart(times, [
             { label: t('dash.in'), cls: 's0', values: hist.map((p) => p.in) },
             { label: t('dash.out'), cls: 's1', values: hist.map((p) => p.out) }]))),
+      haCard(s.ha),
       h('div', { class: 'card' },
         h('div', { class: 'card-head' },
           h('h3', {}, t('dash.recent')),

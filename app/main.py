@@ -18,6 +18,9 @@ from .auth import (COOKIE_NAME, CSRF_HEADER, CSRF_VALUE, LoginThrottle, check_pa
                    make_token, verify_token)
 from .broker import Broker, BrokerUnavailable, DynsecError, DynsecTimeout
 from .config import Settings
+from .ha import HaPublisher
+from .netmap import HostNames, build_map
+from .merge import merge_clients, normalize_client, session_dict  # noqa: F401  (re-exported)
 from .tracker import Tracker, load_state, save_state
 
 log = logging.getLogger("mosquitto_manager")
@@ -32,54 +35,6 @@ ACL_PRESETS = {
 
 
 # --------------------------------------------------------------------- helpers
-def normalize_client(raw: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "username": raw["username"],
-        "textname": raw.get("textname", ""),
-        "textdescription": raw.get("textdescription", ""),
-        "clientid": raw.get("clientid", ""),
-        "disabled": bool(raw.get("disabled", False)),
-        "roles": raw.get("roles", []),
-        "groups": raw.get("groups", []),
-    }
-
-
-def session_dict(s) -> dict[str, Any]:
-    return {"address": s.address, "port": s.port, "clientid": s.clientid,
-            "protocol": s.protocol, "keepalive": s.keepalive, "since": s.since}
-
-
-def merge_clients(raw_clients: list[dict], tracker: Tracker, manager_user: str) -> list[dict]:
-    """Combine Dynamic Security's client list with live data.
-
-    Mosquitto >= 2.1 reports ``connections`` (addresses) for each client, which is
-    authoritative. On older brokers the list is rebuilt from the log feed.
-    """
-    out = []
-    for raw in raw_clients:
-        c = normalize_client(raw)
-        sessions = tracker.sessions_for(c["username"])
-        if "connections" in raw:
-            remaining = list(sessions)
-            conns = []
-            for entry in raw["connections"]:
-                addr = entry.get("address")
-                match = next((s for s in remaining if s.address == addr), None)
-                if match:
-                    remaining.remove(match)
-                    conns.append(session_dict(match))
-                else:
-                    conns.append({"address": addr})
-        else:
-            conns = [session_dict(s) for s in sessions]
-        c["connections"] = conns
-        c["online"] = bool(conns)
-        c["last_seen"] = tracker.last_seen.get(c["username"])
-        c["is_manager"] = c["username"] == manager_user
-        out.append(c)
-    return out
-
-
 async def _manager_roles(broker: Broker, settings: Settings) -> set[str]:
     data = await broker.dynsec("getClient", username=settings.mqtt_username)
     return {r["rolename"] for r in data.get("client", {}).get("roles", [])}
@@ -92,11 +47,14 @@ def create_app(settings: Settings, broker: Broker | None = None,
     broker = broker or Broker(settings, tracker)
     throttle = LoginThrottle()
     state_file = settings.data_dir / "state.json"
+    ha = HaPublisher(settings, broker, tracker)
+    host_names = HostNames(settings.data_dir / "hosts.json")
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         load_state(tracker, state_file)
         broker.start(asyncio.get_running_loop())
+        ha.start(asyncio.get_running_loop())
 
         async def background() -> None:
             ticks = 0
@@ -116,6 +74,7 @@ def create_app(settings: Settings, broker: Broker | None = None,
             yield
         finally:
             task.cancel()
+            await ha.stop()
             broker.stop()
             try:
                 settings.data_dir.mkdir(parents=True, exist_ok=True)
@@ -219,6 +178,7 @@ def create_app(settings: Settings, broker: Broker | None = None,
             "dynsec": {"state": broker.dynsec_state, "error": broker.dynsec_error,
                        "connections_supported": broker.supports_connections},
             "log_feed": broker.log_feed_seen,
+            "ha": ha.info(),
             "failed_logins_24h": tracker.count_events("auth_failed", now - 86400),
             "history": list(broker.history),
             "events": tracker.events(limit=8, kinds={"connect", "disconnect", "auth_failed",
@@ -231,6 +191,23 @@ def create_app(settings: Settings, broker: Broker | None = None,
         kinds = {k for k in (kind or "").split(",") if k} or None
         return {"events": tracker.events(limit, kinds, internal, since_id),
                 "log_feed": broker.log_feed_seen}
+
+    # --------------------------------------------------------------------- map
+    @api.get("/map")
+    async def connection_map():
+        raw = await broker.list_clients()
+        merged = merge_clients(raw, tracker, settings.mqtt_username)
+        data = build_map(merged, tracker, host_names.all())
+        snap = broker.snapshot()
+        data["broker"] = {"host": settings.mqtt_host, "port": settings.mqtt_port,
+                          "connected": broker.connected, "version": snap.get("version"),
+                          "clients_connected": snap.get("clients_connected")}
+        return data
+
+    @api.post("/hosts/alias")
+    async def host_alias(body: models.HostAlias):
+        host_names.set(body.address, body.name)
+        return {"ok": True}
 
     # ----------------------------------------------------------------- clients
     @api.get("/clients")

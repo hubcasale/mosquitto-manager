@@ -45,7 +45,7 @@ function pick(label, options, onAdd) {
     h('button', { class: 'btn', type: 'button', onclick: () => onAdd(sel.value) }, label));
 }
 
-export function renderClients(root) {
+export function renderClients(root, _ctx, query = {}) {
   let clients = [];
   let filter = '';
   let timer;
@@ -300,7 +300,12 @@ export function renderClients(root) {
     try { await paint(); } catch (ex) { m.set(errorBox(ex.message)); }
   }
 
-  load();
+  load().then(() => {
+    if (query.open) {
+      history.replaceState(null, '', '#/clients');
+      openClient(query.open);
+    }
+  });
   timer = setInterval(load, 5000);
   return { dispose: () => clearInterval(timer) };
 }

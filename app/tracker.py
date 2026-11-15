@@ -192,6 +192,13 @@ class Tracker:
             return sum(1 for e in self._events
                        if e.kind == kind and e.ts >= since_ts and not e.internal)
 
+    def last_event(self, kind: str) -> dict | None:
+        with self._lock:
+            for ev in reversed(self._events):
+                if ev.kind == kind and not ev.internal:
+                    return asdict(ev)
+        return None
+
     def sessions_for(self, username: str) -> list[Session]:
         with self._lock:
             return [s for s in self.sessions.values() if s.username == username]

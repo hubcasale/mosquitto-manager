@@ -70,7 +70,7 @@ code { font: .86em ui-monospace, SFMono-Regular, Menlo, monospace; background: v
 .logo { width: 26px; height: 26px; background: url(favicon.svg) center/contain no-repeat; display: inline-block; }
 .nav { display: flex; gap: .2rem; overflow-x: auto; flex: 1; scrollbar-width: none; }
 .nav a {
-  padding: .4rem .75rem; border-radius: 8px; color: var(--muted); text-decoration: none;
+  padding: .4rem .6rem; border-radius: 8px; color: var(--muted); text-decoration: none;
   font-weight: 550; white-space: nowrap;
 }
 .nav a:hover { background: var(--panel-2); color: var(--text); }
@@ -242,3 +242,32 @@ dialog.modal::backdrop { background: rgba(8, 12, 18, .55); }
 /* ------------------------------------------------------------------ login */
 .login { min-height: 100vh; display: grid; place-items: center; padding: 1rem; }
 .login .card { width: min(380px, 100%); }
+
+/* -------------------------------------------------------------------- map */
+.map-card { padding: .4rem; }
+.netmap { width: 100%; height: auto; display: block; max-height: 82vh; }
+.netmap .edge { stroke: var(--line); stroke-width: 1.5; }
+.netmap .edge.host { stroke: var(--muted); stroke-width: 2.5; opacity: .55; }
+.netmap .edge.refused { stroke: var(--bad); stroke-width: 2; stroke-dasharray: 6 6; opacity: .8; }
+.netmap .broker { fill: var(--accent); }
+.netmap .broker-label { fill: var(--accent-ink); font: 700 15px system-ui, sans-serif; }
+.netmap .broker-sub { fill: var(--accent-ink); font: 12px system-ui, sans-serif; opacity: .85; }
+.netmap .host-box { fill: var(--panel-2); stroke: var(--muted); stroke-width: 1.5; }
+.netmap .host-box.refused { fill: var(--bad-bg); stroke: var(--bad); }
+.netmap .host-label { fill: var(--text); font: 600 13px system-ui, sans-serif; }
+.netmap .host-sub { fill: var(--muted); font: 11px system-ui, sans-serif; }
+.netmap .dot.online { fill: var(--ok); }
+.netmap .dot.manager { fill: var(--violet); }
+.netmap .client-label { fill: var(--text); font: 600 13px system-ui, sans-serif; }
+.netmap .sub-label { fill: var(--muted); font: 11px system-ui, sans-serif; }
+.netmap .clickable { cursor: pointer; }
+.netmap .clickable:hover .dot, .netmap .clickable:hover .host-box { stroke: var(--text); stroke-width: 2; }
+.netmap .clickable:focus { outline: none; }
+.netmap .clickable:focus-visible .dot, .netmap .clickable:focus-visible .host-box { stroke: var(--accent); stroke-width: 3; }
+.swatch.online { background: var(--ok); }
+.swatch.manager { background: var(--violet); }
+.swatch.refused { background: var(--bad); }
+.map-legend { flex-wrap: wrap; padding: .2rem .8rem .6rem; }
+button.chip { cursor: pointer; font: inherit; font-size: .82rem; color: inherit; }
+button.chip:hover { border-color: var(--accent); }
+.chip.off { opacity: .6; }

@@ -21,6 +21,10 @@ manage users, passwords, roles and ACLs, see who is connected, and find out why 
 - **Failed logins**: which client id and which address keep being refused, and how often.
 - **Test a login**: open a short connection with a username/password, exactly like a device, and see the
   broker's answer in plain words.
+- **Connection map**: the broker in the middle, each address around it with the clients connected from there,
+  and the sources of refused logins in red. Give an address a friendly name ("Home server").
+- **Home Assistant sensors** (optional): broker status, failed logins, and a connectivity sensor per user,
+  through MQTT discovery. See [docs/HOME_ASSISTANT.md](docs/HOME_ASSISTANT.md).
 - **Activity log**: connections, disconnections, refused logins, and every change made through the broker's
   control channel (passwords are never shown).
 - **Dashboard**: broker version and uptime, clients, subscriptions, message rate, last-hour charts.
@@ -112,6 +116,11 @@ No published image yet? Build it from a checkout: `docker build -t mosquitto-man
 | `PORT` | `8080` | Port inside the container |
 | `DATA_DIR` | `/data` | Session key and a small activity cache |
 | `LOG_LEVEL` | `info` | |
+| `HA_DISCOVERY` | `false` | Publish sensors to Home Assistant ([details](docs/HOME_ASSISTANT.md)) |
+| `HA_USER_SENSORS` | `true` | One connectivity sensor per user |
+| `HA_FAILED_THRESHOLD` | `5` | Failed logins in 10 minutes that turn the "login attack" sensor on |
+| `HA_DISCOVERY_PREFIX` | `homeassistant` | Home Assistant's discovery prefix |
+| `HA_NODE_ID`, `HA_BASE_TOPIC` | `mosquitto_manager` | Names used in the published topics |
 
 ## Security
 
@@ -134,6 +143,9 @@ This tool can change who may connect to your broker, so treat it like an admin p
 - **History is small.** The last ~1000 events are kept in memory and a small file in `/data`.
 - **`acl_file` is converted, with one gap.** The migration tool turns ACL files into roles, but `pattern`
   rules (`%u` / `%c`) cannot be expressed in Dynamic Security and must be re-created by hand.
+- **Connection map: addresses, not devices.** Clients on the same machine, or inside Docker, show the same
+  address. Traffic per client is not available from Mosquitto, so the map shows who is connected, not how
+  much they talk.
 - **One broker per manager.** Run several instances for several brokers.
 
 ## Development

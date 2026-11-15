@@ -21,6 +21,10 @@ Una piccola interfaccia web, da installare in casa, per gestire un broker [Eclip
 - **Login falliti**: quale client id e quale indirizzo vengono rifiutati, e quante volte.
 - **Prova il login**: apre una breve connessione con nome utente e password, come un dispositivo, e mostra la
   risposta del broker in parole semplici.
+- **Mappa delle connessioni**: il broker al centro, intorno ogni indirizzo con i client collegati da lì, e in
+  rosso le sorgenti dei login rifiutati. Puoi dare un nome a un indirizzo ("Server di casa").
+- **Sensori per Home Assistant** (facoltativo): stato del broker, login falliti e un sensore di connessione per
+  ogni utente, tramite MQTT discovery. Vedi [docs/HOME_ASSISTANT.md](docs/HOME_ASSISTANT.md) (in inglese).
 - **Registro attività**: connessioni, disconnessioni, login rifiutati e ogni modifica fatta dal canale di controllo
   del broker (le password non vengono mai mostrate).
 - **Dashboard**: versione e uptime del broker, client, sottoscrizioni, messaggi al minuto, grafici dell'ultima ora.
@@ -134,6 +138,9 @@ Guida completa in inglese: [docs/MIGRATION.md](docs/MIGRATION.md). Per tornare i
 | `COOKIE_SECURE` | `false` | Metti `true` se servita in HTTPS |
 | `SESSION_HOURS` | `12` | Validità del login |
 | `PORT` | `8080` | Porta dentro il container |
+| `HA_DISCOVERY` | `false` | Pubblica i sensori in Home Assistant |
+| `HA_USER_SENSORS` | `true` | Un sensore di connessione per ogni utente |
+| `HA_FAILED_THRESHOLD` | `5` | Login falliti in 10 minuti che accendono il sensore "attacco al login" |
 
 ## Sicurezza
 
@@ -154,6 +161,8 @@ Questo strumento può cambiare chi si collega al tuo broker: trattalo come un pa
 - **Storico limitato**: gli ultimi ~1000 eventi, in memoria e in un piccolo file in `/data`.
 - **`acl_file` convertito, con un'eccezione**: lo strumento di migrazione trasforma l'ACL in ruoli, ma le regole
   `pattern` (`%u` / `%c`) non sono esprimibili in Dynamic Security e vanno rifatte a mano.
+- **Mappa: indirizzi, non dispositivi**: i client sulla stessa macchina, o dentro Docker, mostrano lo stesso
+  indirizzo. Mosquitto non fornisce il traffico per client, quindi la mappa mostra chi è collegato, non quanto parla.
 - **Un broker per manager**.
 
 ## Licenza

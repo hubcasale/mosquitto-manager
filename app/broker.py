@@ -71,6 +71,7 @@ class Broker:
         self.dynsec_error: str | None = None
         self.supports_connections: bool | None = None  # seen "connections" in listClients?
         self.log_feed_seen = False  # any message on $SYS/broker/log/* received?
+        self.on_event = None  # optional callback(Event), called on the event loop
         self._loop: asyncio.AbstractEventLoop | None = None
         self._pending: dict[str, asyncio.Future] = {}
         self._lock = threading.Lock()
@@ -132,7 +133,9 @@ class Broker:
             self._on_dynsec_response(payload)
         elif topic.startswith(LOG_PREFIX):
             self.log_feed_seen = True
-            self.tracker.ingest_log(topic[len(LOG_PREFIX):], payload)
+            ev = self.tracker.ingest_log(topic[len(LOG_PREFIX):], payload)
+            if ev is not None and self.on_event is not None and self._loop is not None:
+                self._loop.call_soon_threadsafe(self.on_event, ev)
         elif topic.startswith("$SYS/"):
             with self._lock:
                 self.stats[topic[5:]] = payload

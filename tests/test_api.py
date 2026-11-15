@@ -276,3 +276,29 @@ def test_merge_clients_dynsec_connections_are_authoritative():
     assert conns[0]["clientid"] == "dev" and conns[1] == {"address": "10.0.0.9"}
     # dynsec says nobody is connected, even though the log still has a stale session
     assert merge_clients([{"username": "bob", "connections": []}], t, "mgr")[0]["online"] is False
+
+
+def test_map_endpoint_and_host_alias(env):
+    client, broker, tracker = env
+    login(client)
+    tracker.ingest_log("N", f"{int(NOW)}: New client connected from 1.1.1.1:5 as mgr-c (p4, c1, k60, u'mgr').", now=NOW)
+    data = client.get("/api/map").json()
+    assert data["broker"]["version"] == "2.1.2" and data["broker"]["connected"]
+    assert data["hosts"][0]["address"] == "1.1.1.1"
+    assert data["hosts"][0]["clients"][0]["is_manager"] is True
+    assert [o["username"] for o in data["offline"]] == ["bob"]
+    r = client.post("/api/hosts/alias", json={"address": "1.1.1.1", "name": "Server"}, headers=CSRF)
+    assert r.status_code == 200
+    assert client.get("/api/map").json()["hosts"][0]["label"] == "Server"
+    client.post("/api/hosts/alias", json={"address": "1.1.1.1", "name": ""}, headers=CSRF)
+    assert client.get("/api/map").json()["hosts"][0]["alias"] is None
+    bad = client.post("/api/hosts/alias", json={"address": "", "name": "x"}, headers=CSRF)
+    assert bad.status_code == 422
+    assert client.post("/api/hosts/alias", json={"address": "1.1.1.1", "name": "x"}).status_code == 403
+
+
+def test_status_reports_home_assistant_off_by_default(env):
+    client, *_ = env
+    login(client)
+    ha = client.get("/api/status").json()["ha"]
+    assert ha["enabled"] is False and ha["state"] == "off" and ha["entities"] == 0

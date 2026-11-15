@@ -27,6 +27,7 @@ const S = {
   'nav.clients': ['Clients', 'Utenti'],
   'nav.roles': ['Roles', 'Ruoli'],
   'nav.groups': ['Groups', 'Gruppi'],
+  'nav.map': ['Map', 'Mappa'],
   'nav.activity': ['Activity', 'Attività'],
   'nav.test': ['Test connection', 'Test connessione'],
   'pill.online': ['Broker online', 'Broker online'],
@@ -230,6 +231,37 @@ const S = {
   'groups.delete.confirm': ['Delete group "{g}"? Its members keep their own roles but lose the group\'s.',
     'Eliminare il gruppo "{g}"? I membri mantengono i propri ruoli ma perdono quelli del gruppo.'],
   'groups.f.name': ['Group name', 'Nome del gruppo'],
+
+  // ---- map
+  'map.intro': [
+    'Who is connected to the broker and from where. Click a client to manage it, or an address to give it a name.',
+    'Chi è collegato al broker e da dove. Clicca un client per gestirlo, o un indirizzo per dargli un nome.'],
+  'map.empty': ['No connections right now.', 'Nessuna connessione in questo momento.'],
+  'map.clients': ['{n} clients', '{n} client'],
+  'map.attempts': ['refused ×{n}', 'rifiutato ×{n}'],
+  'map.legend.client': ['Connected client', 'Client collegato'],
+  'map.legend.manager': ['This manager', 'Questo manager'],
+  'map.legend.refused': ['Refused login (24 h)', 'Login rifiutato (24 h)'],
+  'map.legend.click': ['Click on a node for details', 'Clicca un nodo per i dettagli'],
+  'map.offline': ['Users not connected', 'Utenti non collegati'],
+  'map.docker.hint': [
+    'Clients running on the same machine, or inside Docker, show the same address (the host or the Docker gateway).',
+    'I client che girano sulla stessa macchina, o dentro Docker, mostrano lo stesso indirizzo (l\'host o il gateway di Docker).'],
+  'map.host.hint': ['Give {addr} a friendly name, for example the machine or device it belongs to.',
+    'Dai a {addr} un nome comprensibile, per esempio la macchina o il dispositivo a cui appartiene.'],
+  'map.host.name': ['Name', 'Nome'],
+  'map.host.ph': ['e.g. Home server', 'es. Server di casa'],
+  'map.host.clear': ['Remove name', 'Rimuovi il nome'],
+
+  // ---- Home Assistant
+  'ha.title': ['Home Assistant sensors', 'Sensori per Home Assistant'],
+  'ha.off': ['Not publishing. The manager can create sensors in Home Assistant: broker status, clients, failed logins and one connectivity sensor per user.',
+    'Non pubblica. Il manager può creare sensori in Home Assistant: stato del broker, client, login falliti e un sensore di connessione per ogni utente.'],
+  'ha.off.hint': ['Turn it on with the environment variable', 'Attivalo con la variabile d\'ambiente'],
+  'ha.ok': ['Publishing', 'Pubblica'],
+  'ha.ok.detail': ['{n} entities through MQTT discovery (prefix "{p}").', '{n} entità tramite MQTT discovery (prefisso "{p}").'],
+  'ha.starting': ['starting…', 'avvio in corso…'],
+  'ha.error': ['not working: {e}', 'non funziona: {e}'],
 
   // ---- test connection
   'test.intro': [

@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import os
+import re
 import secrets
 from dataclasses import dataclass
 from pathlib import Path
+
+
+_TOPIC_PART = re.compile(r"[A-Za-z0-9_-]+")
 
 
 class ConfigError(RuntimeError):
@@ -59,6 +63,12 @@ class Settings:
     cookie_secure: bool
     session_hours: int
     log_level: str
+    ha_discovery: bool
+    ha_prefix: str
+    ha_node: str
+    ha_base: str
+    ha_failed_threshold: int
+    ha_user_sensors: bool
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> "Settings":
@@ -88,6 +98,18 @@ class Settings:
                 "something else, such as a reverse proxy with authentication.)"
             )
 
+        ha_node = e.get("HA_NODE_ID", "mosquitto_manager").strip()
+        ha_base = e.get("HA_BASE_TOPIC", "mosquitto_manager").strip()
+        ha_prefix = e.get("HA_DISCOVERY_PREFIX", "homeassistant").strip()
+        for label, value in (("HA_NODE_ID", ha_node), ("HA_BASE_TOPIC", ha_base),
+                             ("HA_DISCOVERY_PREFIX", ha_prefix)):
+            if not _TOPIC_PART.fullmatch(value):
+                raise ConfigError(f"{label} may only contain letters, digits, '_' and '-'.")
+        try:
+            ha_threshold = int(e.get("HA_FAILED_THRESHOLD", "5"))
+        except ValueError as exc:
+            raise ConfigError("HA_FAILED_THRESHOLD must be a number.") from exc
+
         data_dir = Path(e.get("DATA_DIR", "/data"))
         return cls(
             mqtt_host=host,
@@ -105,4 +127,10 @@ class Settings:
             cookie_secure=_bool(e.get("COOKIE_SECURE")),
             session_hours=int(e.get("SESSION_HOURS", "12")),
             log_level=e.get("LOG_LEVEL", "info").lower(),
+            ha_discovery=_bool(e.get("HA_DISCOVERY")),
+            ha_prefix=ha_prefix,
+            ha_node=ha_node,
+            ha_base=ha_base,
+            ha_failed_threshold=max(1, ha_threshold),
+            ha_user_sensors=_bool(e.get("HA_USER_SENSORS"), True),
         )

@@ -3,6 +3,7 @@ import { api, setAuthLostHandler } from './api.js';
 import { t, lang, setLang, LANGS } from './i18n.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderClients } from './views/clients.js';
+import { renderMap } from './views/map.js';
 import { renderRoles } from './views/roles.js';
 import { renderGroups } from './views/groups.js';
 import { renderActivity } from './views/activity.js';
@@ -13,6 +14,7 @@ const root = document.getElementById('app');
 const ROUTES = [
   { id: 'dashboard', render: renderDashboard },
   { id: 'clients', render: renderClients },
+  { id: 'map', render: renderMap },
   { id: 'roles', render: renderRoles },
   { id: 'groups', render: renderGroups },
   { id: 'activity', render: renderActivity },

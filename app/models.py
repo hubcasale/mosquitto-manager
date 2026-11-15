@@ -134,3 +134,8 @@ class TestLogin(BaseModel):
     username: Name
     password: str = Field(max_length=256)
     clientid: Name | None = None
+
+
+class HostAlias(BaseModel):
+    address: Annotated[str, Field(min_length=1, max_length=64), AfterValidator(_no_control_chars)]
+    name: Annotated[str, Field(max_length=64), AfterValidator(_no_control_chars)] = ""
