@@ -7,6 +7,8 @@ import json
 import logging
 import re
 import secrets
+import socket
+import ssl
 import threading
 import time
 import uuid
@@ -50,6 +52,42 @@ def _num(value: str) -> int | float | str:
             return value
 
 
+def diagnose_tls(host: str, port: int, cafile: str | None, insecure: bool = False,
+                 timeout: float = 4.0) -> str | None:
+    """Say in plain words why a TLS connection to the broker fails (None if it works).
+
+    The MQTT library only reports "connection failed"; the usual causes are a certificate
+    for another hostname, an expired one, or a CA the manager does not know.
+    """
+    # Same verification rules as the MQTT client (paho): its context is not the stricter
+    # ssl.create_default_context(), so a certificate it accepts must not be reported as bad.
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    if cafile:
+        ctx.load_verify_locations(cafile)
+    else:
+        ctx.load_default_certs()
+    ctx.verify_mode = ssl.CERT_REQUIRED
+    ctx.check_hostname = not insecure
+    try:
+        with socket.create_connection((host, port), timeout=timeout) as sock:
+            with ctx.wrap_socket(sock, server_hostname=host):
+                return None
+    except ssl.SSLCertVerificationError as exc:
+        reason = exc.verify_message or str(exc)
+        hint = ""
+        if "mismatch" in reason.lower():
+            hint = f" Use the hostname the certificate was issued for as MQTT_HOST (not '{host}')."
+        elif "expired" in reason.lower():
+            hint = " The broker's certificate has expired: renew and reload it."
+        elif "issuer" in reason.lower() or "self" in reason.lower() or "unknown" in reason.lower():
+            hint = " The manager does not trust the certificate's issuer: set MQTT_CA_FILE."
+        return f"TLS certificate rejected: {reason}.{hint}"
+    except ssl.SSLError as exc:
+        return f"TLS error: {exc.reason or exc}. Is {host}:{port} really a TLS port?"
+    except OSError as exc:
+        return f"Cannot reach {host}:{port}: {exc}"
+
+
 def _apply_tls(client: mqtt.Client, s: Settings) -> None:
     if not s.mqtt_tls:
         return
@@ -71,6 +109,8 @@ class Broker:
         self.dynsec_error: str | None = None
         self.supports_connections: bool | None = None  # seen "connections" in listClients?
         self.log_feed_seen = False  # any message on $SYS/broker/log/* received?
+        self._last_diagnosis = 0.0
+        self._diagnosis: str | None = None  # why TLS fails, kept between reconnect attempts
         self.on_event = None  # optional callback(Event), called on the event loop
         self._loop: asyncio.AbstractEventLoop | None = None
         self._pending: dict[str, asyncio.Future] = {}
@@ -109,6 +149,7 @@ class Broker:
         log.info("Connected to broker %s:%s", self.settings.mqtt_host, self.settings.mqtt_port)
         self.connected = True
         self.last_error = None
+        self._diagnosis = None
         self.tracker.reset_sessions()
         client.subscribe([(DYNSEC_RESPONSE_TOPIC, 1), ("$SYS/#", 0)])
 
@@ -121,7 +162,19 @@ class Broker:
 
     def _on_connect_fail(self, _client, _userdata):
         self.connected = False
-        self.last_error = f"Cannot reach {self.settings.mqtt_host}:{self.settings.mqtt_port}"
+        self.last_error = self._diagnosis or (
+            f"Cannot reach {self.settings.mqtt_host}:{self.settings.mqtt_port}")
+        if self.settings.mqtt_tls and time.time() - self._last_diagnosis > 30:
+            self._last_diagnosis = time.time()
+            threading.Thread(target=self._explain_failure, daemon=True).start()
+
+    def _explain_failure(self) -> None:
+        s = self.settings
+        reason = diagnose_tls(s.mqtt_host, s.mqtt_port, s.mqtt_ca_file, s.mqtt_tls_insecure)
+        self._diagnosis = reason
+        if reason and not self.connected:
+            self.last_error = reason
+            log.error(reason)
 
     def _on_message(self, _client, _userdata, msg):
         topic = msg.topic

@@ -104,7 +104,7 @@ No published image yet? Build it from a checkout: `docker build -t mosquitto-man
 | `MQTT_HOST` | *required* | Broker address |
 | `MQTT_PORT` | `1883` | |
 | `MQTT_USERNAME`, `MQTT_PASSWORD` | *required* | The manager's Dynamic Security account |
-| `MQTT_TLS` | `false` | Use TLS to the broker |
+| `MQTT_TLS` | `false` | Use TLS to the broker (see [docs/TLS.md](docs/TLS.md) for enabling it on the broker) |
 | `MQTT_CA_FILE` | system CAs | CA certificate to trust |
 | `MQTT_TLS_INSECURE` | `false` | Skip hostname verification (not recommended) |
 | `UI_PASSWORD` | *required* | Password for the web UI, at least 8 characters |
@@ -123,6 +123,9 @@ No published image yet? Build it from a checkout: `docker build -t mosquitto-man
 | `HA_NODE_ID`, `HA_BASE_TOPIC` | `mosquitto_manager` | Names used in the published topics |
 
 ## Security
+
+To encrypt MQTT itself (port 8883, certificate renewal without restarts, moving clients over) see
+[docs/TLS.md](docs/TLS.md).
 
 This tool can change who may connect to your broker, so treat it like an admin panel.
 

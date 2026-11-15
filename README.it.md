@@ -144,6 +144,9 @@ Guida completa in inglese: [docs/MIGRATION.md](docs/MIGRATION.md). Per tornare i
 
 ## Sicurezza
 
+Per cifrare MQTT (porta 8883, rinnovo del certificato senza riavvii, passaggio dei client) vedi
+[docs/TLS.md](docs/TLS.md) (in inglese).
+
 Questo strumento può cambiare chi si collega al tuo broker: trattalo come un pannello di amministrazione.
 
 - Tienilo **in LAN o dietro VPN / reverse proxy con autenticazione e HTTPS**. Non esporlo direttamente su internet.
