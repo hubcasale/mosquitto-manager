@@ -1,0 +1,22 @@
+services:
+  mosquitto-manager:
+    image: ghcr.io/hubcasale/mosquitto-manager:latest
+    container_name: mosquitto-manager
+    restart: unless-stopped
+    ports:
+      - "8088:8080"            # web UI -> http://<server>:8088
+    environment:
+      # Where your Mosquitto broker is (host/IP reachable from this container).
+      MQTT_HOST: "192.168.1.10"
+      MQTT_PORT: "1883"
+      # The Dynamic Security administrator created for the manager (see README).
+      MQTT_USERNAME: "mm-admin"
+      MQTT_PASSWORD: "change-me"
+      # Password for the web UI itself (min. 8 characters).
+      UI_PASSWORD: "change-me-too"
+      # Optional:
+      # FRAME_ANCESTORS: "'self' http://homeassistant.local:8123"   # to embed in Home Assistant
+      # MQTT_TLS: "true"
+      # MQTT_CA_FILE: "/certs/ca.crt"
+    volumes:
+      - ./data:/data            # session key and recent activity (small)

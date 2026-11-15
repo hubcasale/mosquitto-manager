@@ -1,0 +1,25 @@
+# Minimum Mosquitto configuration for Mosquitto Manager.
+# Adapt your existing mosquitto.conf; do not just replace it.
+
+listener 1883
+allow_anonymous false
+
+# --- 1. Dynamic Security: users, roles, groups and ACLs, editable at runtime.
+# The plugin path depends on how Mosquitto is installed:
+#   official Docker image:      /usr/lib/mosquitto_dynamic_security.so
+#   Debian/Ubuntu package:      /usr/lib/x86_64-linux-gnu/mosquitto_dynamic_security.so
+plugin /usr/lib/mosquitto_dynamic_security.so
+plugin_opt_config_file /mosquitto/data/dynamic-security.json
+
+# --- 2. Connection history and failed logins in the UI.
+# The broker publishes its log on $SYS/broker/log/*, which the manager reads.
+log_dest stdout
+log_dest topic
+log_type error
+log_type warning
+log_type notice
+log_type information
+connection_messages true
+
+# --- 3. Optional: how often $SYS statistics are published (seconds, default 10).
+# sys_interval 10
