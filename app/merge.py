@@ -19,12 +19,19 @@ def normalize_client(raw: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def session_dict(s) -> dict[str, Any]:
+DEFAULT_TLS_PORTS = frozenset({8883})
+
+
+def session_dict(s, tls_ports: frozenset[int] = DEFAULT_TLS_PORTS) -> dict[str, Any]:
     return {"address": s.address, "port": s.port, "clientid": s.clientid,
-            "protocol": s.protocol, "keepalive": s.keepalive, "since": s.since}
+            "protocol": s.protocol, "keepalive": s.keepalive, "since": s.since,
+            "listener_port": s.listener_port,
+            # None = unknown (the connection predates the manager or the log feed is off)
+            "encrypted": None if s.listener_port is None else s.listener_port in tls_ports}
 
 
-def merge_clients(raw_clients: list[dict], tracker: Tracker, manager_user: str) -> list[dict]:
+def merge_clients(raw_clients: list[dict], tracker: Tracker, manager_user: str,
+                  tls_ports: frozenset[int] = DEFAULT_TLS_PORTS) -> list[dict]:
     """Combine Dynamic Security's client list with live data.
 
     Mosquitto >= 2.1 reports ``connections`` (addresses) for each client, which is
@@ -48,11 +55,11 @@ def merge_clients(raw_clients: list[dict], tracker: Tracker, manager_user: str) 
                 match = next((s for s in remaining if s.address == addr), None)
                 if match:
                     remaining.remove(match)
-                    conns.append(session_dict(match))
+                    conns.append(session_dict(match, tls_ports))
                 else:
                     conns.append({"address": addr})
         else:
-            conns = [session_dict(s) for s in sessions]
+            conns = [session_dict(s, tls_ports) for s in sessions]
         c["connections"] = conns
         c["saved_sessions"] = saved
         c["online"] = bool(conns)

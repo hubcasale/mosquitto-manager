@@ -313,3 +313,29 @@ def test_connections_without_address_are_saved_sessions_not_live():
     assert idle["online"] is False and idle["connections"] == [] and idle["saved_sessions"] == 2
     log_based = merge_clients([{"username": "u", "roles": [], "groups": []}], t, "mgr")[0]
     assert log_based["saved_sessions"] == 0
+
+
+def test_merge_marks_connections_encrypted_or_plain():
+    t = Tracker()
+    t.ingest_log("N", f"{int(NOW)}: New connection from 10.0.0.2:5 on port 8883.", now=NOW)
+    t.ingest_log("N", f"{int(NOW)}: New client connected from 10.0.0.2:5 as a (p4, c1, k60, u'bob').", now=NOW)
+    t.ingest_log("N", f"{int(NOW)}: New connection from 10.0.0.3:6 on port 1883.", now=NOW)
+    t.ingest_log("N", f"{int(NOW)}: New client connected from 10.0.0.3:6 as b (p4, c1, k60, u'bob').", now=NOW)
+    raw = [{"username": "bob", "roles": [], "groups": [],
+            "connections": [{"address": "10.0.0.2"}, {"address": "10.0.0.3"}, {"address": "10.0.0.4"}]}]
+    conns = {c["address"]: c for c in merge_clients(raw, t, "mgr")[0]["connections"]}
+    assert conns["10.0.0.2"]["encrypted"] is True and conns["10.0.0.2"]["listener_port"] == 8883
+    assert conns["10.0.0.3"]["encrypted"] is False
+    assert conns["10.0.0.4"].get("encrypted") is None  # never observed: unknown
+    custom = merge_clients(raw, t, "mgr", frozenset({1883}))[0]["connections"]
+    assert {c["address"]: c["encrypted"] for c in custom if "encrypted" in c} == {
+        "10.0.0.2": False, "10.0.0.3": True}
+
+
+def test_status_reports_encryption_counts(env):
+    client, broker, tracker = env
+    login(client)
+    tracker.ingest_log("N", f"{int(NOW)}: New connection from 1.1.1.1:5 on port 8883.", now=NOW)
+    tracker.ingest_log("N", f"{int(NOW)}: New client connected from 1.1.1.1:5 as c (p4, c1, k60, u'u').", now=NOW)
+    enc = client.get("/api/status").json()["encryption"]
+    assert enc["tls"] == 1 and enc["plain"] == 0

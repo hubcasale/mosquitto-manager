@@ -11,6 +11,17 @@ export function loginHint(reason) {
   return '';
 }
 
+// TLS / plain / unknown for one connection (unknown = opened before the manager started).
+export function encryptionBadge(conn) {
+  if (conn.encrypted === true) {
+    return h('span', { class: 'badge ok', title: `port ${conn.listener_port}` }, t('clients.enc.tls'));
+  }
+  if (conn.encrypted === false) {
+    return h('span', { class: 'badge warn', title: `port ${conn.listener_port}` }, t('clients.enc.plain'));
+  }
+  return h('span', { class: 'muted', title: t('clients.enc.unknown') }, '—');
+}
+
 export function testResult(res) {
   return h('div', { class: `notice ${res.ok ? 'ok' : 'error'}`, role: 'status' },
     h('strong', {}, res.ok ? t('test.ok') : t('test.fail')),
@@ -89,8 +100,10 @@ export function renderClients(root, _ctx, query = {}) {
 
   function seenCell(c) {
     if (c.online) {
+      const plain = c.connections.some((x) => x.encrypted === false);
       return h('span', { class: 'small' },
-        c.connections.map((x) => x.address).filter(Boolean).join(', '));
+        c.connections.map((x) => x.address).filter(Boolean).join(', '),
+        plain ? h('span', { class: 'badge warn', title: t('clients.enc.plain.hint') }, t('clients.enc.plain')) : null);
     }
     return c.last_seen
       ? h('span', { class: 'muted small', title: fmtTime(c.last_seen.ts) },
@@ -236,10 +249,11 @@ export function renderClients(root, _ctx, query = {}) {
           c.connections.length
             ? h('table', { class: 'table compact' },
               h('thead', {}, h('tr', {}, h('th', {}, t('act.address')), h('th', {}, t('clients.f.clientid')),
-                h('th', {}, t('clients.proto')), h('th', {}, t('clients.since')))),
+                h('th', {}, t('clients.proto')), h('th', {}, t('clients.enc')), h('th', {}, t('clients.since')))),
               h('tbody', {}, c.connections.map((x) => h('tr', {},
                 h('td', {}, h('code', {}, x.address || '?')), h('td', {}, x.clientid || '—'),
                 h('td', {}, x.protocol ? `${x.protocol} · ${x.keepalive}s` : '—'),
+                h('td', {}, encryptionBadge(x)),
                 h('td', {}, x.since ? ago(x.since) : '—')))))
             : h('p', { class: 'muted' }, t('clients.noconn'),
               c.saved_sessions ? ` ${t('clients.saved', { n: c.saved_sessions })}. ${t('clients.saved.hint')}` : '')),

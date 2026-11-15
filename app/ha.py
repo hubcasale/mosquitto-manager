@@ -397,7 +397,7 @@ class HaPublisher:
         now = time.time()
         if self._users_dirty or now - self._last_users > USERS_RESYNC_SECONDS:
             raw = await self.broker.list_clients()
-            self._users_data = merge_clients(raw, self.tracker, self.s.mqtt_username)
+            self._users_data = merge_clients(raw, self.tracker, self.s.mqtt_username, self.s.tls_ports)
             self._users_dirty = False
             self._last_users = now
             if self.s.ha_user_sensors:

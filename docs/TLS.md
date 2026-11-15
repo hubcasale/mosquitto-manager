@@ -71,8 +71,13 @@ Run the script as root from cron. It does nothing when the certificate has not c
 ## 5. Move the clients
 
 For each client: the **hostname**, port **8883**, TLS on, verification with the system's CA certificates
-(Let's Encrypt is trusted everywhere). Leave port 1883 open while you do this and use the manager's
-*Users* page to see who still connects without TLS.
+(Let's Encrypt is trusted everywhere). Leave port 1883 open while you do this.
+
+The manager shows which connections are encrypted: a **plain** badge on the *Users* page, an amber ring on
+the *Map*, and a counter on the *Dashboard* ("encrypted connections", with how many are still in the clear).
+It learns the broker port of each connection from the broker's log, so it only knows about connections
+opened *after the manager started*; a device that was already connected shows up when it reconnects (the
+counter says how many it has not seen yet). Ports counted as encrypted are set with `TLS_PORTS` (default `8883`).
 
 For Mosquitto Manager itself:
 

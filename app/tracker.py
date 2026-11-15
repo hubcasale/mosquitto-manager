@@ -34,6 +34,7 @@ _CLIENT_LINE = re.compile(
     r"(?:disconnected|closed its connection|has exceeded timeout|has been disconnected)"
     r"(?P<rest>.*)$"
 )
+_NEWCONN = re.compile(r"^New connection from (?P<addr>.+) on port (?P<port>\d+)\.?$")
 _DYNSEC = re.compile(r"^dynsec: (?P<actor>.*?) \| (?P<cmd>\S+)(?: \| (?P<args>.*))?$")
 _PASSWORD = re.compile(r"(password=)\S+", re.IGNORECASE)
 
@@ -58,6 +59,7 @@ class Session:
     keepalive: int
     clean_session: bool
     since: float
+    listener_port: int | None = None  # the broker port it connected to (1883, 8883...)
 
     @property
     def key(self) -> str:
@@ -87,6 +89,7 @@ class Tracker:
         self._next_id = 1
         self.sessions: dict[str, Session] = {}
         self.last_seen: dict[str, dict[str, Any]] = {}
+        self._pending_ports: dict[str, int] = {}  # "ip:port" of a new connection -> listener port
 
     # ------------------------------------------------------------------ parsing
     def ingest_log(self, level_char: str, payload: str, now: float | None = None) -> Event | None:
@@ -115,8 +118,13 @@ class Tracker:
                                  "args": _PASSWORD.sub(r"\1******", m.group("args") or "")}))
             if (m := _CLIENT_LINE.match(text)):
                 return self._on_client_line(m, ts, level, text)
-            if text.startswith("New connection from "):
-                return None  # noise: the following line says what happened
+            if (m := _NEWCONN.match(text)):
+                # Not an event by itself, but the next line (connected / refused) is about the
+                # same address, and this one is the only place that names the broker port.
+                if len(self._pending_ports) > 500:
+                    self._pending_ports.clear()
+                self._pending_ports[m.group("addr")] = int(m.group("port"))
+                return None
             if level in ("error", "warning"):
                 return self._add(Event(0, ts, "log", level, text))
         return None
@@ -124,17 +132,20 @@ class Tracker:
     def _on_connect(self, m: re.Match, ts: float, level: str, text: str) -> Event:
         ip, port = split_address(m.group("addr"))
         user = m.group("user") or None
+        listener = self._pending_ports.pop(m.group("addr"), None)
         s = Session(
             clientid=m.group("cid"), address=ip, port=port, username=user,
             protocol=PROTOCOLS.get(m.group("proto"), f"p{m.group('proto')}"),
             keepalive=int(m.group("ka")), clean_session=m.group("clean") == "1", since=ts,
+            listener_port=listener,
         )
         self.sessions[s.key] = s
         if user and not is_internal(s.clientid):
             self.last_seen[user] = {"ts": ts, "address": ip}
         return self._add(Event(0, ts, "connect", level, text, clientid=s.clientid,
                                username=user, address=ip, internal=is_internal(s.clientid),
-                               extra={"protocol": s.protocol, "keepalive": s.keepalive}))
+                               extra={"protocol": s.protocol, "keepalive": s.keepalive,
+                                      "listener_port": listener}))
 
     def _on_client_line(self, m: re.Match, ts: float, level: str, text: str) -> Event:
         cid = m.group("cid")
@@ -157,12 +168,14 @@ class Tracker:
             ip = session.address
 
         failed = "not authori" in rest.lower() or "not authori" in text.lower()
+        listener = self._pending_ports.pop(addr, None) if addr else None
         if user and not is_internal(cid):
             self.last_seen[user] = {"ts": ts, "address": ip}
         return self._add(Event(
             0, ts, "auth_failed" if failed else "disconnect",
             "warning" if failed else level, text, clientid=cid, username=user,
-            address=ip, reason=rest or None, internal=is_internal(cid)))
+            address=ip, reason=rest or None, internal=is_internal(cid),
+            extra={"listener_port": listener} if listener else {}))
 
     def _add(self, ev: Event) -> Event:
         ev.id = self._next_id
@@ -207,6 +220,19 @@ class Tracker:
         with self._lock:
             return [s for s in self.sessions.values()
                     if include_internal or not is_internal(s.clientid)]
+
+    def encryption_summary(self, tls_ports: frozenset[int], connected: int | None) -> dict[str, int]:
+        """How many of the connections seen since the manager started are encrypted."""
+        with self._lock:
+            live = [x for x in self.sessions.values() if not is_internal(x.clientid)]
+            everything = len(self.sessions)
+        tls = sum(1 for x in live if x.listener_port in tls_ports)
+        plain = sum(1 for x in live if x.listener_port is not None and x.listener_port not in tls_ports)
+        unknown = len(live) - tls - plain
+        if connected is not None:
+            # connections open before the manager started are not tracked until they reconnect
+            unknown += max(0, int(connected) - everything)
+        return {"tls": tls, "plain": plain, "unknown": unknown}
 
     def reset_sessions(self) -> None:
         """Called when the broker connection is (re)established: old state is stale."""

@@ -18,6 +18,7 @@ Una piccola interfaccia web, da installare in casa, per gestire un broker [Eclip
 - **Ruoli, gruppi e ACL**: concedi un topic con un clic ("leggere e scrivere su `shellies/#`") senza scrivere a mano
   le quattro regole di Dynamic Security; consenti/nega; accesso predefinito.
 - **Chi è collegato**: connessioni attive per utente, con indirizzo, client id, protocollo e keepalive.
+- **Cifrata o no**: ogni connessione è marcata TLS o in chiaro (pagina utenti, mappa, contatore in dashboard), per vedere chi usa ancora la 1883 mentre passi i client alla TLS. Vedi [docs/TLS.md](docs/TLS.md) (in inglese).
 - **Login falliti**: quale client id e quale indirizzo vengono rifiutati, e quante volte.
 - **Prova il login**: apre una breve connessione con nome utente e password, come un dispositivo, e mostra la
   risposta del broker in parole semplici.
@@ -138,6 +139,7 @@ Guida completa in inglese: [docs/MIGRATION.md](docs/MIGRATION.md). Per tornare i
 | `COOKIE_SECURE` | `false` | Metti `true` se servita in HTTPS |
 | `SESSION_HOURS` | `12` | Validità del login |
 | `PORT` | `8080` | Porta dentro il container |
+| `TLS_PORTS` | `8883` | Porte del broker che sono listener TLS (per marcare le connessioni cifrate) |
 | `HA_DISCOVERY` | `false` | Pubblica i sensori in Home Assistant |
 | `HA_USER_SENSORS` | `true` | Un sensore di connessione per ogni utente |
 | `HA_FAILED_THRESHOLD` | `5` | Login falliti in 10 minuti che accendono il sensore "attacco al login" |

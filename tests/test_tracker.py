@@ -147,3 +147,46 @@ def test_reset_sessions_and_persistence_roundtrip():
     assert len(t2.events()) == 1
     t2.load({"events": [{"bad": 1}]})  # corrupt data must not raise
     assert t2.events() == []
+
+
+def test_listener_port_is_taken_from_the_new_connection_line():
+    t = Tracker()
+    assert log(t, "New connection from 10.0.0.2:1000 on port 8883.") is None  # not an event itself
+    log(t, "New client connected from 10.0.0.2:1000 as z2m (p4, c1, k60, u'zigbee2mqtt').")
+    log(t, "New connection from 10.0.0.3:2000 on port 1883.")
+    log(t, "New client connected from 10.0.0.3:2000 as old (p4, c1, k60, u'mqtt_user').")
+    by = {s.clientid: s.listener_port for s in t.live_sessions()}
+    assert by == {"z2m": 8883, "old": 1883}
+    assert t.events()[0]["extra"]["listener_port"] == 1883  # newest first; connect events carry it too
+
+
+def test_listener_port_is_not_mixed_up_between_addresses():
+    t = Tracker()
+    log(t, "New connection from 10.0.0.2:1000 on port 8883.")
+    log(t, "New connection from 10.0.0.3:2000 on port 1883.")
+    log(t, "New client connected from 10.0.0.3:2000 as b (p4, c1, k60, u'u').")
+    log(t, "New client connected from 10.0.0.2:1000 as a (p4, c1, k60, u'u').")
+    assert {s.clientid: s.listener_port for s in t.live_sessions()} == {"a": 8883, "b": 1883}
+    log(t, "New client connected from 10.0.0.9:3000 as c (p4, c1, k60, u'u').")  # no preceding line
+    assert {s.clientid: s.listener_port for s in t.live_sessions()}["c"] is None
+
+
+def test_failed_logins_remember_the_port():
+    t = Tracker()
+    log(t, "New connection from 6.6.6.6:5 on port 1883.")
+    ev = log(t, "Client scan [6.6.6.6:5] disconnected: not authorised.")
+    assert ev.kind == "auth_failed" and ev.extra["listener_port"] == 1883
+
+
+def test_encryption_summary_counts_and_unknowns():
+    t = Tracker()
+    log(t, "New connection from 10.0.0.2:1 on port 8883.")
+    log(t, "New client connected from 10.0.0.2:1 as a (p4, c1, k60, u'u').")
+    log(t, "New connection from 10.0.0.3:2 on port 1883.")
+    log(t, "New client connected from 10.0.0.3:2 as b (p4, c1, k60, u'u').")
+    log(t, "New connection from 10.0.0.4:3 on port 1883.")
+    log(t, "New client connected from 10.0.0.4:3 as mm-test-x (p4, c1, k60, u'u').")  # this app's own probe
+    log(t, "New client connected from 10.0.0.5:4 as c (p4, c1, k60, u'u').")  # port line missing
+    summary = t.encryption_summary(frozenset({8883}), connected=6)
+    assert summary == {"tls": 1, "plain": 1, "unknown": 1 + 2}  # c, plus 2 connections never observed
+    assert t.encryption_summary(frozenset({8883, 8884}), connected=None)["tls"] == 1

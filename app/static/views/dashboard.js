@@ -1,6 +1,6 @@
 import { h, clear } from '../dom.js';
 import { t } from '../i18n.js';
-import { fmtTime, uptime, bytes, num } from '../fmt.js';
+import { fmtTime, uptime, num } from '../fmt.js';
 import { lineChart } from '../chart.js';
 import { eventLine } from './activity.js';
 
@@ -76,7 +76,9 @@ export function renderDashboard(root, ctx) {
         stat(t('dash.subs'), num(b.subscriptions), t('dash.retained', { n: num(b.retained) })),
         stat(t('dash.rate'), `${num(b.msg_rate_in, 1)} / ${num(b.msg_rate_out, 1)}`,
           t('dash.rate.sub')),
-        stat(t('dash.traffic'), `${bytes(b.bytes_received)} ↓`, `${bytes(b.bytes_sent)} ↑`),
+        stat(t('dash.enc'), num(s.encryption.tls), t('dash.enc.sub', {
+          plain: num(s.encryption.plain), unknown: num(s.encryption.unknown) }),
+        s.encryption.plain > 0 ? 'warn' : ''),
         stat(t('dash.failedlogins'), num(s.failed_logins_24h), t('dash.24h'),
           s.failed_logins_24h > 0 ? 'warn' : '')),
       h('div', { class: 'grid two' },

@@ -2,6 +2,7 @@ import { h, svg, clear, openModal, toast, field, errorBox } from '../dom.js';
 import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { ago, fmtTime } from '../fmt.js';
+import { encryptionBadge } from './clients.js';
 
 const W = 1000;
 const H = 760;
@@ -62,8 +63,11 @@ function drawMap(data, { onClient, onHost }) {
         nodes.push(svg('g', { class: 'node clickable', tabindex: 0, role: 'button',
           'aria-label': c.username, onclick: () => onClient(c.username),
           onkeydown: (e) => { if (e.key === 'Enter') onClient(c.username); } },
-        svg('title', {}, [c.username, c.clientid, c.protocol, c.since ? ago(c.since) : ''].filter(Boolean).join(' · ')),
-        svg('circle', { cx: x, cy: y, r: 10, class: `dot ${c.is_manager ? 'manager' : 'online'}` }),
+        svg('title', {}, [c.username, c.clientid, c.protocol,
+          c.encrypted === true ? t('clients.enc.tls') : c.encrypted === false ? t('clients.enc.plain') : '',
+          c.since ? ago(c.since) : ''].filter(Boolean).join(' · ')),
+        svg('circle', { cx: x, cy: y, r: 10,
+          class: `dot ${c.is_manager ? 'manager' : 'online'}${c.encrypted === false ? ' plain' : ''}` }),
         svg('text', { x: x + a.dx, y: y + a.dy, 'text-anchor': a.anchor, class: 'client-label' },
           trunc(c.username, crowded ? 16 : 20) + (c.is_manager ? ' ⚙' : ''))));
         if (c.clientid && !crowded) {
@@ -150,6 +154,7 @@ export function renderMap(root) {
     mapBox.append(h('div', { class: 'legend map-legend' },
       h('span', {}, h('i', { class: 'swatch online' }), t('map.legend.client')),
       h('span', {}, h('i', { class: 'swatch manager' }), t('map.legend.manager')),
+      h('span', {}, h('i', { class: 'swatch plain' }), t('map.legend.plain')),
       h('span', {}, h('i', { class: 'swatch refused' }), t('map.legend.refused')),
       h('span', { class: 'muted' }, t('map.legend.click'))));
 
@@ -164,11 +169,13 @@ export function renderMap(root) {
       rows.length ? h('div', { class: 'card flush scroll' },
         h('table', { class: 'table compact' },
           h('thead', {}, h('tr', {}, h('th', {}, t('act.address')), h('th', {}, t('clients.col.user')),
-            h('th', {}, t('clients.f.clientid')), h('th', {}, t('clients.proto')), h('th', {}, t('clients.since')))),
+            h('th', {}, t('clients.f.clientid')), h('th', {}, t('clients.proto')), h('th', {}, t('clients.enc')),
+            h('th', {}, t('clients.since')))),
           h('tbody', {}, rows.map(({ host, c }) => h('tr', {},
             h('td', {}, host.alias ? `${host.alias} ` : '', h('code', {}, host.address)),
             h('td', {}, c.username), h('td', {}, c.clientid || '—'),
             h('td', {}, c.protocol ? `${c.protocol} · ${c.keepalive}s` : '—'),
+            h('td', {}, encryptionBadge(c)),
             h('td', { title: c.since ? fmtTime(c.since) : '' }, c.since ? ago(c.since) : '—')))))) : null,
       h('p', { class: 'muted small' }, t('map.docker.hint')));
   }

@@ -63,3 +63,11 @@ def test_secret_is_persisted(tmp_path):
     a = Settings.from_env(env).secret_key
     b = Settings.from_env(env).secret_key
     assert a == b and len(a) == 64
+
+
+def test_tls_ports_setting(tmp_path):
+    base = {**BASE, "DATA_DIR": str(tmp_path)}
+    assert Settings.from_env(base).tls_ports == frozenset({8883})
+    assert Settings.from_env({**base, "TLS_PORTS": "8883, 8884"}).tls_ports == frozenset({8883, 8884})
+    with pytest.raises(ConfigError):
+        Settings.from_env({**base, "TLS_PORTS": "tls"})

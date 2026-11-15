@@ -179,6 +179,8 @@ def create_app(settings: Settings, broker: Broker | None = None,
                        "connections_supported": broker.supports_connections},
             "log_feed": broker.log_feed_seen,
             "ha": ha.info(),
+            "encryption": tracker.encryption_summary(settings.tls_ports,
+                                                     broker.snapshot().get("clients_connected")),
             "failed_logins_24h": tracker.count_events("auth_failed", now - 86400),
             "history": list(broker.history),
             "events": tracker.events(limit=8, kinds={"connect", "disconnect", "auth_failed",
@@ -196,7 +198,7 @@ def create_app(settings: Settings, broker: Broker | None = None,
     @api.get("/map")
     async def connection_map():
         raw = await broker.list_clients()
-        merged = merge_clients(raw, tracker, settings.mqtt_username)
+        merged = merge_clients(raw, tracker, settings.mqtt_username, settings.tls_ports)
         data = build_map(merged, tracker, host_names.all())
         snap = broker.snapshot()
         data["broker"] = {"host": settings.mqtt_host, "port": settings.mqtt_port,
@@ -213,7 +215,7 @@ def create_app(settings: Settings, broker: Broker | None = None,
     @api.get("/clients")
     async def clients():
         raw = await broker.list_clients()
-        return {"clients": merge_clients(raw, tracker, settings.mqtt_username),
+        return {"clients": merge_clients(raw, tracker, settings.mqtt_username, settings.tls_ports),
                 "connections_supported": broker.supports_connections}
 
     def _protect_user(username: str, action: str) -> None:

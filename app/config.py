@@ -69,6 +69,7 @@ class Settings:
     ha_base: str
     ha_failed_threshold: int
     ha_user_sensors: bool
+    tls_ports: frozenset
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> "Settings":
@@ -110,6 +111,11 @@ class Settings:
         except ValueError as exc:
             raise ConfigError("HA_FAILED_THRESHOLD must be a number.") from exc
 
+        try:
+            tls_ports = frozenset(int(x) for x in e.get("TLS_PORTS", "8883").replace(",", " ").split())
+        except ValueError as exc:
+            raise ConfigError("TLS_PORTS must be a list of port numbers, for example 8883.") from exc
+
         data_dir = Path(e.get("DATA_DIR", "/data"))
         return cls(
             mqtt_host=host,
@@ -133,4 +139,5 @@ class Settings:
             ha_base=ha_base,
             ha_failed_threshold=max(1, ha_threshold),
             ha_user_sensors=_bool(e.get("HA_USER_SENSORS"), True),
+            tls_ports=tls_ports,
         )
